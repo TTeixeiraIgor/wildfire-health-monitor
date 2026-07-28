@@ -1,2 +1,2 @@
-# climate-health-monitor
-Cross data from wildfire/field burning with air conditions and alert health checks.
+# wildfire-health-monitor
+A platform for tracking wildfire events, air pollution, and health conditions, providing real-time alerts and decision support for communities.

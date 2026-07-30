@@ -1,7 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { fetchBrazilFires } from './firms-service.js';
-import { initDb } from './db.js';
+import { initDb, listGeocodedLocations } from './db.js';
 
 dotenv.config();
 
@@ -16,6 +16,16 @@ app.get('/api/fires/brazil', async (req, res) => {
   } catch (error) {
     console.error('Error fetching Brazil FIRMS data:', error.message);
     res.status(500).json({ error: error.message || 'Failed to fetch fire data from FIRMS.' });
+  }
+});
+
+app.get('/api/fires/locations', async (req, res) => {
+  try {
+    const locations = await listGeocodedLocations();
+    res.json({ count: locations.length, locations });
+  } catch (error) {
+    console.error('Error fetching geocoded fire locations:', error.message);
+    res.status(500).json({ error: error.message || 'Failed to fetch geocoded locations.' });
   }
 });
 

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { parse } from 'csv-parse/sync';
 import { saveBrazilFires } from './db.js';
+import { geocodeBrazilLocation } from './geocoding.js';
 
 const FIRMS_API_BASE = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv';
 const FIRMS_SOURCES = {
@@ -50,7 +51,7 @@ export async function fetchBrazilFires(source = 'modis') {
     throw new Error('FIRMS_MAP_KEY is not configured. Register a free MAP_KEY at https://firms.modaps.eosdis.nasa.gov/api/ and set it in the environment.');
   }
 
-  const area = ' -74.0,-34.0,-34.0,6.0';
+  const area = '-74.0,-34.0,-34.0,6.0';
   const endpoint = `${FIRMS_API_BASE}/${mapKey}/${firsSource}/${encodeURIComponent(area)}/1`;
 
   const response = await axios.get(endpoint, {
@@ -88,6 +89,10 @@ export async function fetchBrazilFires(source = 'modis') {
       frp: record.frp,
       daynight: record.daynight
     }));
+
+  for (const fire of brazilFires) {
+    fire.location = await geocodeBrazilLocation({ latitude: fire.latitude, longitude: fire.longitude });
+  }
 
   await saveBrazilFires(source, brazilFires);
 

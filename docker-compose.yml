@@ -25,6 +25,7 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@db:5432/wildfire
       FIRMS_MAP_KEY: ${FIRMS_MAP_KEY:-}
+      GOOGLE_GEOCODING_API_KEY: ${GOOGLE_GEOCODING_API_KEY:-}
     ports:
       - '3000:3000'
     volumes:

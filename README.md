@@ -31,6 +31,7 @@ The backend service will be available at `http://localhost:3000` and PostgreSQL 
 - `PORT` - backend port (default `3000`)
 - `DATABASE_URL` - PostgreSQL connection URL
 - `FIRMS_MAP_KEY` - free MAP_KEY provided by NASA FIRMS to use the `/api/area/csv` endpoint
+- `GOOGLE_GEOCODING_API_KEY` - Google Geocoding API key used to resolve city and state from coordinates
 
 Use `.env.example` as a template for local configuration.
 

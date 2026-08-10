@@ -16,7 +16,7 @@ services:
       timeout: 3s
       retries: 5
 
-  backend:
+  app:
     build: .
     restart: unless-stopped
     depends_on:
@@ -24,6 +24,7 @@ services:
     environment:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@db:5432/wildfire
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-before-production}
       FIRMS_MAP_KEY: ${FIRMS_MAP_KEY:-}
       GOOGLE_GEOCODING_API_KEY: ${GOOGLE_GEOCODING_API_KEY:-}
     ports:
@@ -31,7 +32,7 @@ services:
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
-    command: ["npm", "start"]
+    command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 
 volumes:
   postgres_data:

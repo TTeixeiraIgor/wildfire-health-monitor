@@ -15,11 +15,30 @@ const FIRE_LOCATION_TABLE = `
   );
 `;
 
+const AUTH_USERS_TABLE = `
+  CREATE TABLE IF NOT EXISTS auth_users (
+    id SERIAL PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    last_login_at TIMESTAMPTZ
+  );
+`;
+
+const AUTH_USERS_EMAIL_INDEX = `
+  CREATE UNIQUE INDEX IF NOT EXISTS auth_users_email_unique_idx
+  ON auth_users (LOWER(email));
+`;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/wildfire',
   connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 30000
 });
+
+let initPromise = null;
 
 async function waitForDbReady(attempts = 0) {
   try {
@@ -35,31 +54,42 @@ async function waitForDbReady(attempts = 0) {
 }
 
 export async function initDb() {
-  await waitForDbReady();
+  if (!initPromise) {
+    initPromise = (async () => {
+      await waitForDbReady();
 
-  const createTable = `
-    CREATE TABLE IF NOT EXISTS fires (
-      id SERIAL PRIMARY KEY,
-      source TEXT NOT NULL,
-      acq_date DATE NOT NULL,
-      acq_time TEXT NOT NULL,
-      latitude DOUBLE PRECISION NOT NULL,
-      longitude DOUBLE PRECISION NOT NULL,
-      brightness DOUBLE PRECISION,
-      confidence TEXT,
-      satellite TEXT,
-      instrument TEXT,
-      version TEXT,
-      bright_t31 TEXT,
-      frp TEXT,
-      daynight TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      UNIQUE(source, acq_date, acq_time, latitude, longitude, satellite, instrument)
-    );
-  `;
+      const createFiresTable = `
+        CREATE TABLE IF NOT EXISTS fires (
+          id SERIAL PRIMARY KEY,
+          source TEXT NOT NULL,
+          acq_date DATE NOT NULL,
+          acq_time TEXT NOT NULL,
+          latitude DOUBLE PRECISION NOT NULL,
+          longitude DOUBLE PRECISION NOT NULL,
+          brightness DOUBLE PRECISION,
+          confidence TEXT,
+          satellite TEXT,
+          instrument TEXT,
+          version TEXT,
+          bright_t31 TEXT,
+          frp TEXT,
+          daynight TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(source, acq_date, acq_time, latitude, longitude, satellite, instrument)
+        );
+      `;
 
-  await pool.query(createTable);
-  await pool.query(FIRE_LOCATION_TABLE);
+      await pool.query(createFiresTable);
+      await pool.query(FIRE_LOCATION_TABLE);
+      await pool.query(AUTH_USERS_TABLE);
+      await pool.query(AUTH_USERS_EMAIL_INDEX);
+    })().catch((error) => {
+      initPromise = null;
+      throw error;
+    });
+  }
+
+  return initPromise;
 }
 
 function buildFireKey(fire) {
@@ -67,6 +97,8 @@ function buildFireKey(fire) {
 }
 
 export async function saveBrazilFires(source, fires) {
+  await initDb();
+
   if (!fires || fires.length === 0) {
     return;
   }
@@ -134,13 +166,96 @@ export async function saveBrazilFires(source, fires) {
   }
 }
 
-export async function listGeocodedLocations() {
-  const result = await pool.query(`
+export async function listGeocodedLocations(limit) {
+  await initDb();
+
+  const hasLimit = Number.isInteger(limit) && limit > 0;
+  const query = `
     SELECT fire_key, source, latitude, longitude, city, state, country, formatted_address, created_at
     FROM fire_locations
     ORDER BY created_at DESC
-  `);
+    ${hasLimit ? 'LIMIT $1' : ''}
+  `;
+  const result = hasLimit ? await pool.query(query, [limit]) : await pool.query(query);
   return result.rows;
+}
+
+export async function createAuthUser({ fullName, email, passwordHash }) {
+  await initDb();
+
+  const result = await pool.query(
+    `
+      INSERT INTO auth_users (full_name, email, password_hash)
+      VALUES ($1, $2, $3)
+      RETURNING id, full_name, email, created_at, updated_at, last_login_at
+    `,
+    [fullName.trim(), email.trim().toLowerCase(), passwordHash]
+  );
+
+  return result.rows[0];
+}
+
+export async function findAuthUserByEmail(email) {
+  await initDb();
+
+  const result = await pool.query(
+    `
+      SELECT id, full_name, email, password_hash, created_at, updated_at, last_login_at
+      FROM auth_users
+      WHERE LOWER(email) = LOWER($1)
+      LIMIT 1
+    `,
+    [email.trim()]
+  );
+
+  return result.rows[0] || null;
+}
+
+export async function findAuthUserById(id) {
+  await initDb();
+
+  const result = await pool.query(
+    `
+      SELECT id, full_name, email, password_hash, created_at, updated_at, last_login_at
+      FROM auth_users
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [id]
+  );
+
+  return result.rows[0] || null;
+}
+
+export async function touchAuthUserLogin(id) {
+  await initDb();
+
+  const result = await pool.query(
+    `
+      UPDATE auth_users
+      SET last_login_at = NOW(), updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, full_name, email, created_at, updated_at, last_login_at
+    `,
+    [id]
+  );
+
+  return result.rows[0] || null;
+}
+
+export async function getFireOverview() {
+  await initDb();
+
+  const result = await pool.query(`
+    SELECT
+      (SELECT COUNT(*)::INT FROM fires) AS total_fires,
+      (SELECT COUNT(*)::INT FROM fire_locations) AS total_locations,
+      (SELECT COUNT(*)::INT FROM fires WHERE source = 'modis') AS modis_fires,
+      (SELECT COUNT(*)::INT FROM fires WHERE source = 'viirs') AS viirs_fires,
+      (SELECT MAX(created_at) FROM fires) AS last_fire_sync
+  `);
+
+  return result.rows[0];
 }
 
 export default pool;

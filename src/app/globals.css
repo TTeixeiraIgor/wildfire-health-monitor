@@ -1,0 +1,55 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Avenir Next", "Montserrat", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(252, 211, 77, 0.25), transparent 34%),
+    radial-gradient(circle at 85% 15%, rgba(16, 185, 129, 0.2), transparent 24%),
+    linear-gradient(180deg, #f6efe3 0%, #f4f7f1 45%, #eef4ff 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.glass-panel {
+  backdrop-filter: blur(20px);
+}
+
+.page-grid {
+  position: relative;
+  overflow: hidden;
+}
+
+.page-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.65), transparent 90%);
+  pointer-events: none;
+}
+
+.metric-value {
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  letter-spacing: -0.04em;
+}

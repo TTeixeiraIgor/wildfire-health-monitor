@@ -1,22 +1,29 @@
 {
-  "name": "wildfire-health-monitor-backend",
-  "version": "0.1.0",
-  "description": "Backend service for collecting FIRMS wildfire data focused on Brazil.",
-  "main": "src/index.js",
+  "name": "wildfire-health-monitor",
+  "version": "0.2.0",
+  "description": "Fullstack wildfire monitoring application with user authentication and FIRMS integration.",
+  "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
+    "@heroui/react": "^3.2.3",
+    "@heroui/styles": "^3.2.3",
     "axios": "^1.6.0",
+    "bcryptjs": "^2.4.3",
     "csv-parse": "^5.4.0",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.4",
-    "pg": "^8.11.0"
+    "jose": "^6.1.0",
+    "next": "^15.0.0",
+    "pg": "^8.11.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@tailwindcss/postcss": "^4.0.0",
+    "tailwindcss": "^4.0.0"
   },
   "author": "",
   "license": "MIT"

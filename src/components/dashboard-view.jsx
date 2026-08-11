@@ -27,7 +27,7 @@ function MetricCard({ label, value, detail }) {
   );
 }
 
-export function DashboardView({ user, overview, recentLocations }) {
+export function DashboardView({ user, overview, recentLocations, healthSummary }) {
   return (
     <main className="app-shell page-grid relative isolate px-6 py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
@@ -52,6 +52,9 @@ export function DashboardView({ user, overview, recentLocations }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <Button as={Link} href="/health-assessment">
+              Nova triagem
+            </Button>
             <Button as={Link} href="/api/auth/session" target="_blank" variant="secondary">
               Ver sessao
             </Button>
@@ -75,6 +78,11 @@ export function DashboardView({ user, overview, recentLocations }) {
           />
           <MetricCard detail="Eventos FIRMS via MODIS." label="Fonte MODIS" value={overview.modis_fires ?? 0} />
           <MetricCard detail="Eventos FIRMS via VIIRS." label="Fonte VIIRS" value={overview.viirs_fires ?? 0} />
+          <MetricCard
+            detail="Triagens de saude enviadas pelo usuario autenticado."
+            label="Triagens salvas"
+            value={healthSummary.total_assessments ?? 0}
+          />
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -149,6 +157,9 @@ export function DashboardView({ user, overview, recentLocations }) {
                 </p>
                 <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <code>POST /api/auth/signup</code> e <code>POST /api/auth/signin</code>
+                </p>
+                <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <code>POST /api/health-assessments</code> para salvar triagens de saude associadas ao usuario
                 </p>
               </div>
             </Card.Content>

@@ -61,6 +61,23 @@ Passwords are never stored in plain text. Sessions are handled with signed HTTP-
 - `POST /api/auth/signout` - destroys the current session
 - `GET /api/auth/session` - returns the authenticated user, when present
 
+## Health Intake Form
+
+The application now includes a protected health and well-being intake flow at `/health-assessment`.
+
+- Frontend: progressive multi-step form built with HeroUI
+- Backend: `POST /api/health-assessments`
+- Storage: dedicated `health_assessments` table linked to `auth_users`
+- Privacy: explicit LGPD consent and anonymization acknowledgment before submission
+
+The form captures:
+
+- demographic and georeferencing data
+- pre-existing diagnoses and vulnerability factors
+- current respiratory, mucosal, and systemic symptoms
+- environmental, occupational, and lifestyle exposure
+- medication use and recent healthcare utilization
+
 ## Wildfire endpoints
 
 - `GET /api/health` - checks whether the service is active

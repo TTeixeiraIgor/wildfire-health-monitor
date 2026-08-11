@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/auth.js';
-import { getFireOverview, listGeocodedLocations } from '@/db.js';
+import { getFireOverview, getHealthAssessmentSummary, listGeocodedLocations } from '@/db.js';
 import { DashboardView } from '@/components/dashboard-view.jsx';
 
 export default async function DashboardPage() {
@@ -9,7 +9,11 @@ export default async function DashboardPage() {
     redirect('/sign-in');
   }
 
-  const [overview, recentLocations] = await Promise.all([getFireOverview(), listGeocodedLocations(6)]);
+  const [overview, recentLocations, healthSummary] = await Promise.all([
+    getFireOverview(),
+    listGeocodedLocations(6),
+    getHealthAssessmentSummary(user.id)
+  ]);
 
-  return <DashboardView overview={overview} recentLocations={recentLocations} user={user} />;
+  return <DashboardView healthSummary={healthSummary} overview={overview} recentLocations={recentLocations} user={user} />;
 }

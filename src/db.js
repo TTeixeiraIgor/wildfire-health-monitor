@@ -32,6 +32,39 @@ const AUTH_USERS_EMAIL_INDEX = `
   ON auth_users (LOWER(email));
 `;
 
+const HEALTH_ASSESSMENTS_TABLE = `
+  CREATE TABLE IF NOT EXISTS health_assessments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
+    birth_date DATE,
+    age INTEGER,
+    pregnancy_status TEXT NOT NULL,
+    postal_code TEXT NOT NULL,
+    neighborhood TEXT NOT NULL,
+    city TEXT NOT NULL,
+    state TEXT,
+    currently_symptomatic BOOLEAN NOT NULL DEFAULT TRUE,
+    symptom_started_at TIMESTAMPTZ,
+    symptom_intensity SMALLINT,
+    symptom_severity TEXT,
+    diagnoses JSONB NOT NULL DEFAULT '[]'::jsonb,
+    respiratory_symptoms JSONB NOT NULL DEFAULT '[]'::jsonb,
+    mucosal_symptoms JSONB NOT NULL DEFAULT '[]'::jsonb,
+    systemic_symptoms JSONB NOT NULL DEFAULT '[]'::jsonb,
+    exposure_profile JSONB NOT NULL DEFAULT '{}'::jsonb,
+    medication_profile JSONB NOT NULL DEFAULT '{}'::jsonb,
+    care_history JSONB NOT NULL DEFAULT '{}'::jsonb,
+    additional_notes TEXT,
+    consent_accepted BOOLEAN NOT NULL,
+    anonymization_accepted BOOLEAN NOT NULL,
+    data_use_purpose TEXT NOT NULL,
+    consent_version TEXT NOT NULL DEFAULT 'lgpd-v1',
+    risk_level TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
+`;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/wildfire',
   connectionTimeoutMillis: 5000,
@@ -83,6 +116,7 @@ export async function initDb() {
       await pool.query(FIRE_LOCATION_TABLE);
       await pool.query(AUTH_USERS_TABLE);
       await pool.query(AUTH_USERS_EMAIL_INDEX);
+      await pool.query(HEALTH_ASSESSMENTS_TABLE);
     })().catch((error) => {
       initPromise = null;
       throw error;
@@ -254,6 +288,180 @@ export async function getFireOverview() {
       (SELECT COUNT(*)::INT FROM fires WHERE source = 'viirs') AS viirs_fires,
       (SELECT MAX(created_at) FROM fires) AS last_fire_sync
   `);
+
+  return result.rows[0];
+}
+
+export async function createHealthAssessment({
+  userId,
+  birthDate,
+  age,
+  pregnancyStatus,
+  postalCode,
+  neighborhood,
+  city,
+  state,
+  currentlySymptomatic,
+  symptomStartedAt,
+  symptomIntensity,
+  symptomSeverity,
+  diagnoses,
+  respiratorySymptoms,
+  mucosalSymptoms,
+  systemicSymptoms,
+  exposureProfile,
+  medicationProfile,
+  careHistory,
+  additionalNotes,
+  consentAccepted,
+  anonymizationAccepted,
+  dataUsePurpose,
+  riskLevel
+}) {
+  await initDb();
+
+  const result = await pool.query(
+    `
+      INSERT INTO health_assessments (
+        user_id,
+        birth_date,
+        age,
+        pregnancy_status,
+        postal_code,
+        neighborhood,
+        city,
+        state,
+        currently_symptomatic,
+        symptom_started_at,
+        symptom_intensity,
+        symptom_severity,
+        diagnoses,
+        respiratory_symptoms,
+        mucosal_symptoms,
+        systemic_symptoms,
+        exposure_profile,
+        medication_profile,
+        care_history,
+        additional_notes,
+        consent_accepted,
+        anonymization_accepted,
+        data_use_purpose,
+        risk_level
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14::jsonb,$15::jsonb,$16::jsonb,$17::jsonb,$18::jsonb,$19::jsonb,$20,$21,$22,$23,$24
+      )
+      RETURNING
+        id,
+        user_id,
+        birth_date,
+        age,
+        pregnancy_status,
+        postal_code,
+        neighborhood,
+        city,
+        state,
+        currently_symptomatic,
+        symptom_started_at,
+        symptom_intensity,
+        symptom_severity,
+        diagnoses,
+        respiratory_symptoms,
+        mucosal_symptoms,
+        systemic_symptoms,
+        exposure_profile,
+        medication_profile,
+        care_history,
+        additional_notes,
+        consent_accepted,
+        anonymization_accepted,
+        data_use_purpose,
+        risk_level,
+        created_at,
+        updated_at
+    `,
+    [
+      userId,
+      birthDate,
+      age,
+      pregnancyStatus,
+      postalCode,
+      neighborhood,
+      city,
+      state,
+      currentlySymptomatic,
+      symptomStartedAt,
+      symptomIntensity,
+      symptomSeverity,
+      JSON.stringify(diagnoses),
+      JSON.stringify(respiratorySymptoms),
+      JSON.stringify(mucosalSymptoms),
+      JSON.stringify(systemicSymptoms),
+      JSON.stringify(exposureProfile),
+      JSON.stringify(medicationProfile),
+      JSON.stringify(careHistory),
+      additionalNotes,
+      consentAccepted,
+      anonymizationAccepted,
+      dataUsePurpose,
+      riskLevel
+    ]
+  );
+
+  return result.rows[0];
+}
+
+export async function listHealthAssessmentsByUser(userId, limit = 5) {
+  await initDb();
+
+  const result = await pool.query(
+    `
+      SELECT
+        id,
+        postal_code,
+        neighborhood,
+        city,
+        state,
+        currently_symptomatic,
+        symptom_started_at,
+        symptom_intensity,
+        symptom_severity,
+        diagnoses,
+        respiratory_symptoms,
+        mucosal_symptoms,
+        systemic_symptoms,
+        risk_level,
+        created_at
+      FROM health_assessments
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `,
+    [userId, limit]
+  );
+
+  return result.rows;
+}
+
+export async function getHealthAssessmentSummary(userId) {
+  await initDb();
+
+  const result = await pool.query(
+    `
+      SELECT
+        COUNT(*)::INT AS total_assessments,
+        MAX(created_at) AS latest_submission_at,
+        (
+          SELECT risk_level
+          FROM health_assessments
+          WHERE user_id = $1
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) AS latest_risk_level
+      FROM health_assessments
+      WHERE user_id = $1
+    `,
+    [userId]
+  );
 
   return result.rows[0];
 }
